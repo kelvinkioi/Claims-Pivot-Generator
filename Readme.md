@@ -1,4 +1,4 @@
-git add .## Claims Pivot Generator
+## Claims Pivot Generator
 
 The Claims Pivot Generator is a Python-based tool designed to process insurance claims data and generate pivot tables for analysis. It reads input data from a CSV file, processes it to calculate key metrics, and outputs a summarized pivot table in Excel format.
 

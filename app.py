@@ -206,3 +206,9 @@ if uploaded_file:
             file_name="Pivot_Tables_By_Scheme.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    # Footer
+st.markdown("---")
+st.markdown(
+    "<div style='text-align: center;'>Developed with ❤️ by "
+    "<a href='https://github.com/kelvinkioi/' target='_blank'>Kelvin Kioi</a></div>",
+    unsafe_allow_html=True)
