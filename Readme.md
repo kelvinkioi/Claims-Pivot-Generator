@@ -27,7 +27,7 @@ The Claims Pivot Generator is a Python-based tool designed to process insurance 
 
 ### Example (Local Usage)
 ```bash
-streamlit run app.py --input claims_data.csv --output summary_pivot.xlsx
+streamlit run app.py 
 ```
 
 ### License
