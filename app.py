@@ -24,7 +24,7 @@ if uploaded_file:
             except Exception as e:
                 st.error(f"Failed to read the Excel file: {e}")
                 st.stop()
-    
+
     df = st.session_state.df
     required_cols = ['SCHEME', 'TRANSACTION DATE', 'BENEFIT', 'AMOUNT', 'COUNT', 'UNIQUE COUNT', 'PROVIDER NAME']
     if not all(col in df.columns for col in required_cols):
@@ -37,7 +37,7 @@ if uploaded_file:
     with st.form("input_form"):
         st.info("Select the schemes and set the date range for each (or choose to ignore dates).")
         selected_schemes = st.multiselect("Search and select schemes:", options=unique_schemes)
-        
+
         scheme_date_filters = {}
         if selected_schemes:
             st.markdown("### Configure Date Filters for Each Selected Scheme")
@@ -85,29 +85,35 @@ if uploaded_file:
                 scheme_df = scheme_df.sort_values(by='TRANSACTION DATE')
                 scheme_df['TRANSACTION DATE NORMALIZED'] = scheme_df['TRANSACTION DATE'].dt.strftime('%m/%Y')
 
-                # Pivot 1: Benefit by Amount
+                # Pivot 1: Benefit by Amount (date rows)
                 pivot1 = pd.pivot_table(
                     scheme_df, values='AMOUNT', index='TRANSACTION DATE NORMALIZED',
                     columns='BENEFIT', aggfunc='sum', margins=True, margins_name='Grand Total'
                 )
 
-                # Pivot 2: Benefit by Count
+                # Pivot 2: Benefit by Count (date rows)
                 pivot2 = pd.pivot_table(
                     scheme_df, values='COUNT', index='TRANSACTION DATE NORMALIZED',
                     columns='BENEFIT', aggfunc='sum', margins=True, margins_name='Grand Total'
                 )
 
-                # Pivot 3: Unique Count
+                # Pivot 3: Unique Count (date rows)
                 pivot3 = pd.pivot_table(
                     scheme_df, values='UNIQUE COUNT', index='TRANSACTION DATE NORMALIZED',
                     aggfunc='sum', margins=True, margins_name='Grand Total'
                 )
 
-                # Pivot 4: Provider Name by Amount (sorted)
-                pivot4 = scheme_df.groupby('PROVIDER NAME')['AMOUNT'].sum().sort_values(ascending=False).reset_index()
+                # Pivot 4: Provider by Amount (BENEFIT columns)
+                pivot4 = pd.pivot_table(
+                    scheme_df, values='AMOUNT', index='PROVIDER NAME',
+                    columns='BENEFIT', aggfunc='sum', margins=True, margins_name='Grand Total'
+                )
 
-                # Pivot 5: Provider Name by Count (sorted)
-                pivot5 = scheme_df.groupby('PROVIDER NAME')['COUNT'].sum().sort_values(ascending=False).reset_index()
+                # Pivot 5: Provider by Count (BENEFIT columns)
+                pivot5 = pd.pivot_table(
+                    scheme_df, values='COUNT', index='PROVIDER NAME',
+                    columns='BENEFIT', aggfunc='sum', margins=True, margins_name='Grand Total'
+                )
 
                 # Create Excel sheet
                 sheet_name = scheme[:31]
@@ -118,11 +124,12 @@ if uploaded_file:
                     sheet_name = f"{sheet_name} {i}"
                 sheet = workbook.create_sheet(sheet_name)
 
-                # Dynamic headers for pivot 1 & 2
+                # ------------------------
+                # Write Pivot 1: Amount by Benefit
+                # ------------------------
                 dynamic_benefits = sorted(scheme_df['BENEFIT'].unique())
                 headers = ['TRANSACTION DATE NORMALIZED'] + dynamic_benefits + ['Grand Total']
 
-                # Write Pivot 1
                 sheet.cell(row=1, column=1, value="Benefit by Amount")
                 for i, h in enumerate(headers, start=1):
                     sheet.cell(row=2, column=i, value=h)
@@ -131,7 +138,9 @@ if uploaded_file:
                     for j, h in enumerate(headers[1:], start=2):
                         sheet.cell(row=i, column=j, value=row.get(h, 0))
 
-                # Write Pivot 2
+                # ------------------------
+                # Write Pivot 2: Count by Benefit
+                # ------------------------
                 row2_start = pivot1.shape[0] + 5
                 sheet.cell(row=row2_start, column=1, value="Benefit by Count")
                 for i, h in enumerate(headers, start=1):
@@ -141,7 +150,9 @@ if uploaded_file:
                     for j, h in enumerate(headers[1:], start=2):
                         sheet.cell(row=i, column=j, value=row.get(h, 0))
 
-                # Write Pivot 3
+                # ------------------------
+                # Write Pivot 3: Unique Count
+                # ------------------------
                 row3_start = row2_start + pivot2.shape[0] + 5
                 sheet.cell(row=row3_start, column=1, value="Number of Lives (Unique Count)")
                 sheet.cell(row=row3_start + 1, column=1, value="TRANSACTION DATE NORMALIZED")
@@ -150,23 +161,30 @@ if uploaded_file:
                     sheet.cell(row=i, column=1, value=row[0])
                     sheet.cell(row=i, column=2, value=row[1]['UNIQUE COUNT'])
 
-                # Write Pivot 4
+                # ------------------------
+                # Write Pivot 4: Amount by Provider & Benefit
+                # ------------------------
                 row4_start = row3_start + pivot3.shape[0] + 5
-                sheet.cell(row=row4_start, column=1, value="Provider by Amount (Descending)")
-                sheet.cell(row=row4_start + 1, column=1, value="PROVIDER NAME")
-                sheet.cell(row=row4_start + 1, column=2, value="AMOUNT")
-                for i, row in enumerate(pivot4.itertuples(index=False), start=row4_start + 2):
-                    sheet.cell(row=i, column=1, value=row[0])
-                    sheet.cell(row=i, column=2, value=row[1])
+                provider_headers = ['PROVIDER NAME'] + dynamic_benefits + ['Grand Total']
+                sheet.cell(row=row4_start, column=1, value="Provider by Amount")
+                for i, h in enumerate(provider_headers, start=1):
+                    sheet.cell(row=row4_start + 1, column=i, value=h)
+                for i, (idx, row) in enumerate(pivot4.iterrows(), start=row4_start + 2):
+                    sheet.cell(row=i, column=1, value=idx)
+                    for j, h in enumerate(provider_headers[1:], start=2):
+                        sheet.cell(row=i, column=j, value=row.get(h, 0))
 
-                # Write Pivot 5
+                # ------------------------
+                # Write Pivot 5: Count by Provider & Benefit
+                # ------------------------
                 row5_start = row4_start + pivot4.shape[0] + 5
-                sheet.cell(row=row5_start, column=1, value="Provider by Count (Descending)")
-                sheet.cell(row=row5_start + 1, column=1, value="PROVIDER NAME")
-                sheet.cell(row=row5_start + 1, column=2, value="COUNT")
-                for i, row in enumerate(pivot5.itertuples(index=False), start=row5_start + 2):
-                    sheet.cell(row=i, column=1, value=row[0])
-                    sheet.cell(row=i, column=2, value=row[1])
+                sheet.cell(row=row5_start, column=1, value="Provider by Count")
+                for i, h in enumerate(provider_headers, start=1):
+                    sheet.cell(row=row5_start + 1, column=i, value=h)
+                for i, (idx, row) in enumerate(pivot5.iterrows(), start=row5_start + 2):
+                    sheet.cell(row=i, column=1, value=idx)
+                    for j, h in enumerate(provider_headers[1:], start=2):
+                        sheet.cell(row=i, column=j, value=row.get(h, 0))
 
             workbook.save(output)
             output.seek(0)
@@ -197,4 +215,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
