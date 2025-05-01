@@ -1,3 +1,4 @@
+import preprocess 
 import streamlit as st
 import pandas as pd
 import openpyxl
@@ -17,12 +18,13 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file:
     if "df" not in st.session_state:
-        with st.spinner("Reading file..."):
+        with st.spinner("Preprocessing file..."):
             try:
-                st.session_state.df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
-                st.success("✅ File loaded successfully!")
+                df = preprocess.run_preprocessing(uploaded_file)
+                st.session_state.df = df
+                st.success("✅ File preprocessed and loaded successfully!")
             except Exception as e:
-                st.error(f"Failed to read the Excel file: {e}")
+                st.error(f"Preprocessing failed: {e}")
                 st.stop()
 
     df = st.session_state.df
