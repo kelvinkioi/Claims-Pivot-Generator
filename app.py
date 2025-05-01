@@ -12,7 +12,7 @@ st.title("📊 Pivot Table Generator")
 # Step 1: Upload and Cache the File
 # ------------------------------
 uploaded_file = st.file_uploader(
-    "Upload your Excel file (must contain columns: SCHEME, TRANSACTION DATE, BENEFIT, AMOUNT, COUNT, UNIQUE COUNT, PROVIDER NAME)",
+    "Upload your Excel file (xlsx format) with the 'Export' sheet",
     type=["xlsx"]
 )
 
